@@ -6,6 +6,7 @@ import gdown
 
 # Google Drive se model download (agar local me nahi hai)
 MODEL_PATH = "model.pkl"
+PIPELINE_PATH = "pipeline.pkl"
 
 if not os.path.exists(MODEL_PATH):
     gdown.download(
@@ -14,8 +15,19 @@ if not os.path.exists(MODEL_PATH):
         quiet=False
     )
 
-# Model load
+# Pipeline bhi download karo (agar local me nahi hai)
+# ⚠️ Apna pipeline.pkl ka Google Drive ID yahan daalo
+PIPELINE_DRIVE_ID = "188_Pu181CgEZoCeYwmnVA2aa473LEtYg"
+if not os.path.exists(PIPELINE_PATH) and PIPELINE_DRIVE_ID != "YOUR_PIPELINE_DRIVE_ID_HERE":
+    gdown.download(
+        id=PIPELINE_DRIVE_ID,
+        output=PIPELINE_PATH,
+        quiet=False
+    )
+
+# Model aur Pipeline load
 model = joblib.load(MODEL_PATH)
+pipeline = joblib.load(PIPELINE_PATH)
 
 st.set_page_config(page_title="House Price Prediction", page_icon="🏠")
 
@@ -46,22 +58,21 @@ ocean = st.selectbox(
 
 if st.button("Predict House Price"):
 
+    # Raw column names use karo (pipeline khud transform kar legi)
     input_data = pd.DataFrame({
-        "num__longitude": [longitude],
-        "num__latitude": [latitude],
-        "num__housing_median_age": [housing_median_age],
-        "num__total_rooms": [total_rooms],
-        "num__total_bedrooms": [total_bedrooms],
-        "num__population": [population],
-        "num__households": [households],
-        "num__median_income": [median_income],
-        "cat__ocean_proximity_<1H OCEAN": [1 if ocean == "<1H OCEAN" else 0],
-        "cat__ocean_proximity_INLAND": [1 if ocean == "INLAND" else 0],
-        "cat__ocean_proximity_ISLAND": [1 if ocean == "ISLAND" else 0],
-        "cat__ocean_proximity_NEAR BAY": [1 if ocean == "NEAR BAY" else 0],
-        "cat__ocean_proximity_NEAR OCEAN": [1 if ocean == "NEAR OCEAN" else 0]
+        "longitude": [longitude],
+        "latitude": [latitude],
+        "housing_median_age": [housing_median_age],
+        "total_rooms": [total_rooms],
+        "total_bedrooms": [total_bedrooms],
+        "population": [population],
+        "households": [households],
+        "median_income": [median_income],
+        "ocean_proximity": [ocean]
     })
 
-    prediction = model.predict(input_data)
+    # ✅ Pehle pipeline se transform karo, phir predict karo
+    transformed_input = pipeline.transform(input_data)
+    prediction = model.predict(transformed_input)
 
     st.success(f"🏡 Predicted House Price: ${prediction[0]:,.2f}")
